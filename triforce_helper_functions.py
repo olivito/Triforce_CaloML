@@ -33,7 +33,7 @@ def eval(model, ECALs, HCALs, truth):
         accuracy = 0 # ignore accuracy for energy regression
     # relative diff mean and sigma, for regression
     try:
-        reldiff = 100.0*(truth.data - outputs.data)/truth.data
+        reldiff = 100.0*(truth.data - outputs.data.view(-1))/truth.data
         mean = torch.mean(reldiff)
         sigma = torch.std(reldiff)
     except:

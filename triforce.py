@@ -138,6 +138,8 @@ def update_test_loss(epoch_end):
     global previous_total_test_loss, previous_epoch_total_test_loss, over_break_count, end_training
     classifier_test_loss = 0
     regressor_test_loss = 0
+    regressor_test_meandiff = 0
+    regressor_test_sigmadiff = 0
     GAN_test_loss = 0
     classifier_test_accuracy = 0
     GAN_test_accuracy = 0
@@ -150,7 +152,10 @@ def update_test_loss(epoch_end):
             classifier_test_loss += classifier_test_output[0]
             classifier_test_accuracy += classifier_test_output[1]
         if (regressor != None):
-            regressor_test_loss += eval(regressor, ECALs, HCALs, energies)[0]
+            loss, acc, _, _, mean, regressor_test_sigmadiff = eval(regressor, ECALs, HCALs, energies)
+            regressor_test_loss += loss
+            regressor_test_meandiff += mean
+#            regressor_test_loss += eval(regressor, ECALs, HCALs, energies)[0]
         if (GAN != None):
             GAN_test_loss += eval(GAN, ECALs, HCALs, ys)[0]
             GAN_test_accuracy += eval(GAN, ECALs, HCALs, ys)[1]
@@ -159,6 +164,7 @@ def update_test_loss(epoch_end):
             break
     classifier_test_loss /= n_test_batches
     regressor_test_loss /= n_test_batches
+    regressor_test_meandiff /= n_test_batches
     GAN_test_loss /= n_test_batches
     classifier_test_accuracy /= n_test_batches
     GAN_test_accuracy /= n_test_batches
@@ -175,6 +181,9 @@ def update_test_loss(epoch_end):
     if (regressor != None): print('(R) -----\t', end="")
     if (GAN != None): print('(G) %.4f\t' % (GAN_test_accuracy), end="")
     print()
+    if (regressor != None):
+        print(print_prefix + 'mean relative diff:\t(R) %.4f' % (regressor_test_meandiff))
+        print(print_prefix + 'sigma relative diff:\t(R) %.4f' % (regressor_test_sigmadiff))
 
     classifier_loss_history_test.append(classifier_test_loss)
     regressor_loss_history_test.append(regressor_test_loss)

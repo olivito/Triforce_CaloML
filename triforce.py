@@ -22,6 +22,7 @@ import Options
 import time
 start = time.time()
 
+import setGPU
 sys.dont_write_bytecode = True # prevent the creation of .pyc files
 
 #####################

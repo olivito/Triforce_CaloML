@@ -19,6 +19,8 @@ import Loader.loader as loader
 import shutil
 from triforce_helper_functions import *
 import Options
+import time
+start = time.time()
 
 sys.dont_write_bytecode = True # prevent the creation of .pyc files
 
@@ -298,3 +300,6 @@ print('Finished Training')
 
 print('Performing Analysis')
 analyzer.analyze([classifier, regressor, GAN], testLoader, out_file)
+
+end = time.time()
+print('Total time taken: %.2f minutes'%(float(end - start)/60.))

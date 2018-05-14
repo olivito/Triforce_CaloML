@@ -129,6 +129,7 @@ calculate_loss_per = 20
 max_n_test_batches = 10 # stop evaluating test loss after this many batches
 previous_total_test_loss = 0 # stop training when loss stops decreasing
 previous_epoch_total_test_loss = 0
+do_test_loss_during_epoch = False
 
 end_training = False
 over_break_count = 0
@@ -204,12 +205,14 @@ def update_test_loss(epoch_end):
         else:
             over_break_count = 0
         if (over_break_count >= options['relativeDeltaLossNumber']):
+            print('Ending training due to over_break_count:',over_break_count)
             end_training = True
     else:
         epoch_total_test_loss = classifier_test_loss + regressor_test_loss + GAN_test_loss
         relativeDeltaLoss = 1 if previous_epoch_total_test_loss==0 else (previous_epoch_total_test_loss - epoch_total_test_loss)/(previous_epoch_total_test_loss)
         previous_epoch_total_test_loss = epoch_total_test_loss
         if (relativeDeltaLoss < options['relativeDeltaLossThreshold']):
+            print('Ending training due to relativeDeltaLoss:',relativeDeltaLoss)
             end_training = True
 
 # perform training
@@ -249,7 +252,7 @@ for epoch in range(options['nEpochs']):
             if (regressor != None): print('(R) -----\t', end="")
             if (GAN != None): print('(G) %.4f\t' % (GAN_accuracy_history_train[-1]), end="")
             print()
-            update_test_loss(epoch_end=False)
+            if do_test_loss_during_epoch: update_test_loss(epoch_end=False)
             classifier_training_loss = 0
             regressor_training_loss = 0
             GAN_training_loss = 0

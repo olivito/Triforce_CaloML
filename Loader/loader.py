@@ -15,6 +15,13 @@ def load_hdf5(file):
     with h5py.File(file, 'r') as f:
         ECAL = f['ECAL'][:]
         HCAL = f['HCAL'][:]
+        # load only small central window, 25 ECAL, 5 HCAL
+        # doing it here when reading from the h5 file speeds up data loading
+        #ECAL = f['ECAL'][:,13:38,13:38,:]
+        #HCAL = f['HCAL'][:,3:8,3:8,:]
+        # load only small central window, other sizes
+        #ECAL = f['ECAL'][:,17:34,17:34,:]
+        #HCAL = f['HCAL'][:,4:7,4:7,:]
         pdgID = f['pdgID'][:]
         energy = f['energy'][:]
 

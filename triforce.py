@@ -82,8 +82,8 @@ nTrain = int(filesPerParticle * options['trainRatio'])
 nTest = filesPerParticle - nTrain
 if (nTest==0 or nTrain==0):
     print("Not enough files found - check sample paths")
-nTrain = max(nTrain,options['nTrainMax'])
-nTest = max(nTest,options['nTestMax'])
+if (options['nTrainMax'] > 0): nTrain = min(nTrain,options['nTrainMax'])
+if (options['nTestMax'] > 0): nTest = min(nTest,options['nTestMax'])
 trainFiles = []
 testFiles = []
 for i in range(filesPerParticle):
@@ -92,9 +92,14 @@ for i in range(filesPerParticle):
         newFiles.append(particleFiles[j][i])
     if i < nTrain:
         trainFiles.append(newFiles)
-    else:
+    elif i < nTrain+nTest:
         testFiles.append(newFiles)
+    else:
+        break
 options['eventsPerFile'] *= nParticles
+
+print('trainFiles:',trainFiles)
+print('testFiles:',testFiles)
 
 trainSet = loader.HDF5Dataset(trainFiles, options['eventsPerFile'], options['classPdgID'])
 testSet = loader.HDF5Dataset(testFiles, options['eventsPerFile'], options['classPdgID'])
@@ -151,12 +156,14 @@ def update_test_loss(epoch_end):
     for data in testLoader:
         ECALs, HCALs, ys, energies = data
         ECALs, HCALs, ys, energies = Variable(ECALs.cuda()), Variable(HCALs.cuda()), Variable(ys.cuda()), Variable(energies.cuda())
+#        weights = torch.sqrt(10./energies)
+        weights = 1.0/torch.log(energies)
         if (classifier != None):
             classifier_test_output = eval(classifier, ECALs, HCALs, ys)
             classifier_test_loss += classifier_test_output[0]
             classifier_test_accuracy += classifier_test_output[1]
         if (regressor != None):
-            loss, acc, _, _, mean, regressor_test_sigmadiff = eval(regressor, ECALs, HCALs, energies)
+            loss, acc, _, _, mean, regressor_test_sigmadiff = eval_weights(regressor, ECALs, HCALs, energies, weights)
             regressor_test_loss += loss
             regressor_test_meandiff += mean
 #            regressor_test_loss += eval(regressor, ECALs, HCALs, energies)[0]
@@ -195,28 +202,28 @@ def update_test_loss(epoch_end):
     classifier_accuracy_history_test.append(classifier_test_accuracy)
     GAN_accuracy_history_test.append(GAN_test_accuracy)
 
-    # decide whether or not to end training when this epoch finishes
-    if (not epoch_end):
-        total_test_loss = 0
-        if (classifier != None): total_test_loss += classifier_test_loss
-        if (regressor != None): total_test_loss += regressor_test_loss
-        if (GAN != None): total_test_loss += GAN_test_loss
-        relativeDeltaLoss = 1 if previous_total_test_loss==0 else (previous_total_test_loss - total_test_loss)/(previous_total_test_loss)
-        previous_total_test_loss = total_test_loss
-        if (relativeDeltaLoss < options['relativeDeltaLossThreshold']):
-            over_break_count += 1
-        else:
-            over_break_count = 0
-        if (over_break_count >= options['relativeDeltaLossNumber']):
-            print('Ending training due to over_break_count:',over_break_count)
-            end_training = True
-    else:
-        epoch_total_test_loss = classifier_test_loss + regressor_test_loss + GAN_test_loss
-        relativeDeltaLoss = 1 if previous_epoch_total_test_loss==0 else (previous_epoch_total_test_loss - epoch_total_test_loss)/(previous_epoch_total_test_loss)
-        previous_epoch_total_test_loss = epoch_total_test_loss
-        if (relativeDeltaLoss < options['relativeDeltaLossThreshold']):
-            print('Ending training due to relativeDeltaLoss:',relativeDeltaLoss)
-            end_training = True
+    # # decide whether or not to end training when this epoch finishes
+    # if (not epoch_end):
+    #     total_test_loss = 0
+    #     if (classifier != None): total_test_loss += classifier_test_loss
+    #     if (regressor != None): total_test_loss += regressor_test_loss
+    #     if (GAN != None): total_test_loss += GAN_test_loss
+    #     relativeDeltaLoss = 1 if previous_total_test_loss==0 else (previous_total_test_loss - total_test_loss)/(previous_total_test_loss)
+    #     previous_total_test_loss = total_test_loss
+    #     if (relativeDeltaLoss < options['relativeDeltaLossThreshold']):
+    #         over_break_count += 1
+    #     else:
+    #         over_break_count = 0
+    #     if (over_break_count >= options['relativeDeltaLossNumber']):
+    #         print('Ending training due to over_break_count:',over_break_count)
+    #         end_training = True
+    # else:
+    #     epoch_total_test_loss = classifier_test_loss + regressor_test_loss + GAN_test_loss
+    #     relativeDeltaLoss = 1 if previous_epoch_total_test_loss==0 else (previous_epoch_total_test_loss - epoch_total_test_loss)/(previous_epoch_total_test_loss)
+    #     previous_epoch_total_test_loss = epoch_total_test_loss
+    #     if (relativeDeltaLoss < options['relativeDeltaLossThreshold']):
+    #         print('Ending training due to relativeDeltaLoss:',relativeDeltaLoss)
+    #         end_training = True
 
 # perform training
 print('Training')
@@ -229,11 +236,13 @@ for epoch in range(options['nEpochs']):
     for i, data in enumerate(trainLoader):
         ECALs, HCALs, ys, energies = data
         ECALs, HCALs, ys, energies = Variable(ECALs.cuda()), Variable(HCALs.cuda()), Variable(ys.cuda()), Variable(energies.cuda())
+#        weights = torch.sqrt(10./energies)
+        weights = 1.0/torch.log(energies)
         if (classifier != None):
             classifier_training_loss += train(classifier, ECALs, HCALs, ys)[0]
             classifier_training_accuracy += train(classifier, ECALs, HCALs, ys)[1]
         if (regressor != None):
-            regressor_training_loss += train(regressor, ECALs, HCALs, energies)[0]
+            regressor_training_loss += train_weights(regressor, ECALs, HCALs, energies, weights)[0]
         if (GAN != None):
             GAN_training_loss += train(GAN, ECALs, HCALs, ys)[0]
             GAN_training_accuracy += train(GAN, ECALs, HCALs, ys)[1]
@@ -300,7 +309,7 @@ print('Finished Training')
 ######################
 
 print('Performing Analysis')
-analyzer.analyze([classifier, regressor, GAN], testLoader, out_file)
+analyzer.analyze([classifier, regressor, GAN], testLoader, out_file, do_weights=True)
 
 end = time.time()
 print('Total time taken: %.2f minutes'%(float(end - start)/60.))

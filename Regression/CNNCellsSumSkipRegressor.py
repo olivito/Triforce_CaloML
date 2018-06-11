@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import Regression.loss_functions as loss_functions
 
 ##############
 # Regression #
@@ -24,7 +25,7 @@ class Regressor_Net(nn.Module):
 #        self.linear1 = nn.Linear(5073+2, 1000) # NIPS settings # 3 ECALnconv, 10 HCALnconv, NIPS window of 25 ECAL, 5 HCAL
 #        self.linear1 = nn.Linear(3993+324+2, 1000) # 3 ECALnconv, 3 HCALnconv, NIPS window of 25 ECAL, 5 HCAL
 #        self.linear1 = nn.Linear(13310+324+2, 1000) # 10 ECALnconv, 3 HCALnconv, NIPS window of 25 ECAL, 5 HCAL
-        self.linear1 = nn.Linear(19008+2025+2, 1000) # 3 ECALnconv, 3 HCALnconv, bigger window of 51 ECAL, 11 HCAL
+        self.linear1 = nn.Linear(19008+2025+2, 1000) # 3 ECALnconv, 3 HCALnconv, bigger window of 51 ECAL, 11 HCAL <-- new default
 #        self.linear1 = nn.Linear(63360+2025+2, 1000) # 10 ECALnconv, 3 HCALnconv, bigger window of 51 ECAL, 11 HCAL
         self.output = nn.Linear(1000+2, 1)
         # initialize last two weights in linear and output layer to 1: assume close to identity for energy sums
@@ -68,4 +69,5 @@ class Regressor():
         self.net = Regressor_Net(dropoutProb)
         self.net.cuda()
         self.optimizer = optim.Adam(self.net.parameters(), lr=learningRate, weight_decay=decayRate)
-        self.lossFunction = nn.MSELoss()
+        self.lossFunction = loss_functions.weighted_mse_loss
+#        self.lossFunction = nn.MSELoss()

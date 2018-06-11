@@ -1,12 +1,12 @@
 import torch
 from torch.autograd import Variable
-from triforce_helper_functions import eval
+from triforce_helper_functions import eval,eval_weights
 import numpy as np
 
 class Analyzer():
 
     # main analysis function
-    def analyze(self, tools, testLoader, out_file):
+    def analyze(self, tools, testLoader, out_file, do_weights = False):
 
         [classifier, regressor, GAN] = tools
         classifier_test_loss = 0
@@ -26,9 +26,11 @@ class Analyzer():
         for data in testLoader:
             ECALs, HCALs, ys, energies = data
             ECALs, HCALs, ys, energies = Variable(ECALs.cuda()), Variable(HCALs.cuda()), Variable(ys.cuda()), Variable(energies.cuda())
+            #weights = torch.sqrt(10./energies)
+            weights = 1.0/torch.log(energies)
             if (classifier != None): classifier_outputs.append(eval(classifier, ECALs, HCALs, ys))
             else: classifier_outputs.append((0,0,0,0,0,0))
-            if (regressor != None): regressor_outputs.append(eval(regressor, ECALs, HCALs, energies))
+            if (regressor != None): regressor_outputs.append(eval_weights(regressor, ECALs, HCALs, energies, weights))
             else: regressor_outputs.append((0,0,0,0,0,0))
             if (GAN != None): GAN_outputs.append(eval(GAN, ECALs, HCALs, ys))
             else: GAN_outputs.append((0,0,0,0,0,0))
